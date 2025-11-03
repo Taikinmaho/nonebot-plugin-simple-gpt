@@ -1,4 +1,4 @@
-# nonebot-plugin-simple-gpt
+# [WIP] nonebot-plugin-simple-gpt
 
 极速开发的，基于大模型的 NoneBot2 群聊对话插件，支持在群聊中通过艾特机器人或随机触发的方式获得自然语言回复。
 
