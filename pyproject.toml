@@ -8,6 +8,7 @@ authors = [
 dependencies = [
     "nonebot2>=2.0.0",
     "httpx>=0.24.0",
+    "openai",
 ]
 requires-python = ">=3.8"
 readme = "README.md"
@@ -17,9 +18,3 @@ license = {text = "MIT"}
 Homepage = "https://github.com/colasama/nonebot-plugin-simple-gpt"
 Repository = "https://github.com/colasama/nonebot-plugin-simple-gpt"
 
-[build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
-
-[tool.pdm.build]
-includes = ["nonebot_plugin_simple_gpt", "README.md"]
