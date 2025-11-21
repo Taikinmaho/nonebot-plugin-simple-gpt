@@ -8,7 +8,7 @@ from typing import Deque, Dict, List, Optional
 
 from nonebot import get_driver, get_plugin_config, on_message
 from nonebot.adapters import Bot
-from nonebot.adapters.onebot.v11 import GroupMessageEvent, MessageEvent
+from nonebot.adapters.onebot.v11 import GroupMessageEvent, MessageEvent, MessageSegment
 from nonebot.log import logger
 from nonebot.matcher import Matcher
 from nonebot.plugin import PluginMetadata
@@ -65,6 +65,10 @@ class Config(BaseModel):
     simple_gpt_proactive_group_whitelist: List[int] = Field(
         default_factory=list,
         description="允许主动发言的群聊 ID 列表，留空则禁用主动发言",
+    )
+    simple_gpt_use_reply_on_first_line: bool = Field(
+        default=True,
+        description="是否在首条回复中引用对应消息，便于成员查看上下文",
     )
 
     @validator("simple_gpt_api_base")
@@ -159,6 +163,24 @@ def should_reply(event: MessageEvent) -> bool:
     return random.random() < plugin_config.simple_gpt_reply_probability
 
 
+async def _send_lines_with_optional_reply(
+    matcher: Matcher, event: MessageEvent, lines: List[str]
+) -> None:
+    if not lines:
+        return
+
+    for idx, line in enumerate(lines):
+        await asyncio.sleep(random.uniform(1.0, 3.0))
+        message = line
+        if (
+            idx == 0
+            and plugin_config.simple_gpt_use_reply_on_first_line
+            and hasattr(event, "message_id")
+        ):
+            message = MessageSegment.reply(event.message_id) + MessageSegment.text(line)
+        await matcher.send(message)
+
+
 def _is_group_allowed_for_proactive(group_id: int) -> bool:
     whitelist = plugin_config.simple_gpt_proactive_group_whitelist
     if not whitelist:
@@ -224,9 +246,7 @@ async def _(matcher: Matcher, bot: Bot, event: MessageEvent) -> None:
         )
         reply_text = generated or plugin_config.simple_gpt_failure_reply
         lines = [line.strip() for line in reply_text.splitlines() if line.strip()]
-        for line in lines:
-            await asyncio.sleep(random.uniform(1.0, 3.0))
-            await matcher.send(line)
+        await _send_lines_with_optional_reply(matcher, event, lines)
 
     history_manager.append(
         session_id,
