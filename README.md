@@ -36,6 +36,7 @@
 | `SIMPLE_GPT_MAX_AI_CALLS` | 否 | `20` | 单个速率窗口中允许的大模型调用次数，设为 `0` 表示不限频 |
 | `SIMPLE_GPT_AI_RATE_LIMIT_WINDOW_SECONDS` | 否 | `60` | 频率统计窗口，单位秒，与上面组合可配置“每分钟 N 次”这样的限制 |
 | `SIMPLE_GPT_PENDING_QUEUE_LIMIT` | 否 | `10` | 待回复队列最多缓存的消息数，超出后移除最旧的消息 |
+| `SIMPLE_GPT_REPEAT_TRIGGER_COUNT` | 否 | `3` | 当群聊连续出现指定条数的相同消息时触发复读，不调用 AI，直接重复一次 |
 | `SIMPLE_GPT_AUTO_REPLY_COOLDOWN_MINUTES` | 否 | `30` | 触发频率上限后，在多久时间内暂停无 `@` 的随机回复 |
 | `SIMPLE_GPT_ALLOW_PARALLEL_PROCESSING` | 否 | `false` | 是否允许在上一条消息尚未发完时再次调用 AI，默认禁用（直接加入待回复队列） |
 

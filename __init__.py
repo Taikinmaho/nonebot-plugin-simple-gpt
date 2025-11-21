@@ -172,6 +172,11 @@ class Config(BaseModel):
         default=False,
         description="是否允许在上一条消息尚未发送完成时继续调用 AI（默认禁止）",
     )
+    simple_gpt_repeat_trigger_count: int = Field(
+        default=3,
+        ge=2,
+        description="触发复读的连续相同消息条数，达到后直接复读+1",
+    )
 
     @validator("simple_gpt_api_base")
     def _strip_api_base(cls, value: str) -> str:
@@ -291,6 +296,37 @@ class HistoryManager:
             history = deque(maxlen=self._limit)
             self._store[session_id] = history
         history.append(entry)
+
+
+def _should_trigger_repeat_reply(
+    history: Sequence[HistoryEntry], new_content: str
+) -> bool:
+    threshold = plugin_config.simple_gpt_repeat_trigger_count
+    if threshold <= 1:
+        return False
+    if not new_content:
+        return False
+
+    count = 1
+    for entry in reversed(history):
+        if entry.is_bot:
+            break
+        if entry.content != new_content:
+            break
+        count += 1
+        if count >= threshold:
+            return True
+    return False
+
+
+async def _perform_repeat_reply(
+    session_id: str, content: str, bot: Bot, event: MessageEvent
+) -> None:
+    await bot.send(event=event, message=content)
+    history_manager.append(
+        session_id, HistoryEntry(speaker="鸽子姬", content=content, is_bot=True)
+    )
+    logger.info("simple-gpt: 触发复读（session=%s，内容=%s）", session_id, content)
 
 
 @dataclass
@@ -628,6 +664,15 @@ async def _(_matcher: Matcher, bot: Bot, event: MessageEvent) -> None:
     display_name = event.sender.card or event.sender.nickname or f"用户{user_id}"
 
     history_before = history_manager.snapshot(session_id)
+    if _should_trigger_repeat_reply(history_before, plain_text):
+        history_manager.append(
+            session_id,
+            HistoryEntry(speaker=display_name, content=plain_text, is_bot=False),
+        )
+        await _perform_repeat_reply(session_id, plain_text, bot, event)
+        await _maybe_process_pending_tasks()
+        return
+
     is_tome_event = event.is_tome()
     reply_needed = should_reply(event)
     if reply_needed and not is_tome_event and not _is_group_allowed_for_proactive(
