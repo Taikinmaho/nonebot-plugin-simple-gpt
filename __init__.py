@@ -52,7 +52,7 @@ class StickerItem(BaseModel):
             raise ValueError("sticker key cannot be empty")
         return normalized
 
-    @root_validator
+    @root_validator(skip_on_failure=True)
     def _ensure_resource(cls, values: Dict[str, object]) -> Dict[str, object]:  # type: ignore[override]
         face_id = values.get("face_id")
         image_url = values.get("image_url")
@@ -122,11 +122,21 @@ class Config(BaseModel):
     )
     simple_gpt_stickers: List[StickerItem] = Field(
         default_factory=lambda: [
-            StickerItem(key="doge", description="狗头，表达无奈又调侃的语气", face_id=179),
-            StickerItem(key="点赞", description="竖起大拇指，表示夸奖赞同", face_id=201),
-            StickerItem(key="捂脸", description="捂脸叹气，表示无奈或小尴尬", face_id=264),
-            StickerItem(key="加油", description="举旗打气，给对方打气加油", face_id=315),
-            StickerItem(key="摸鱼", description="摸鱼划水，表达想偷懒的小情绪", face_id=285),
+            StickerItem(key="大笑", description="", face_id=13),
+            StickerItem(key="爱心", description="适合与一个句子末尾放在一起，不适合单独一行", face_id=66),
+            StickerItem(key="抱拳", description="", face_id=118),
+            StickerItem(key="拳头", description="", face_id=120),
+            StickerItem(key="OK", description="", face_id=124),
+            StickerItem(key="愤怒", description="愤怒符号，表示生气", face_id=146),
+            StickerItem(key="灯泡", description="想到什么好点子时可以用这个", face_id=160),
+            StickerItem(key="滑稽", description="", face_id=178),
+            StickerItem(key="笑哭", description="表示哭笑不得", face_id=182),
+            StickerItem(key="doge", description="", face_id=179),
+            StickerItem(key="戳戳", description="", face_id=181),
+            StickerItem(key="点赞", description="", face_id=201),
+            StickerItem(key="捂脸", description="", face_id=264),
+            StickerItem(key="加油", description="", face_id=315),
+            StickerItem(key="摸鱼", description="", face_id=285),
         ],
         description="可供 [[sticker:KEY]] 使用的表情包列表；可自定义 face_id 或图片 URL",
     )
@@ -208,7 +218,7 @@ def _build_sticker_prompt_hint(stickers: Sequence[StickerDefinition]) -> str:
         return ""
     intro = (
         "你可以在需要配合表情包的地方插入 [[sticker:KEY]]，系统会把它替换成真正的表情包，"
-        "而这段标记不会展示给群成员。请保持自然语气，最多使用 0-2 个表情包。\n"
+        "如非必要，不使用表情包。\n"
         "当前可用的表情包列表："
     )
     lines = [intro]
