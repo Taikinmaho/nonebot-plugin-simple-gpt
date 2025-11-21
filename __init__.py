@@ -115,7 +115,14 @@ class Config(BaseModel):
         description="是否在首条回复中引用对应消息，便于成员查看上下文",
     )
     simple_gpt_enable_stickers: bool = Field(
-        default=True, description="是否在 Prompt 中启用表情包提示并解析 [[sticker:KEY]] 标记"
+        default=False,
+        description="是否在 Prompt 中启用表情包提示并解析 [[sticker:KEY]] 标记",
+    )
+    simple_gpt_sticker_hint_probability: float = Field(
+        default=1.0,
+        ge=0.0,
+        le=1.0,
+        description="当启用表情包功能时，为模型提供表情包列表提示的概率",
     )
     simple_gpt_sticker_max_per_reply: int = Field(
         default=2, ge=0, le=5, description="单次回复允许附带的表情包数量上限"
@@ -239,6 +246,17 @@ STICKER_HINT_TEXT = (
 STICKER_PLACEHOLDER_PATTERN = re.compile(
     r"\[\[sticker:(?P<key>[^\[\]]{1,32})\]\]", flags=re.IGNORECASE
 )
+
+
+def _should_provide_sticker_hint() -> bool:
+    if not plugin_config.simple_gpt_enable_stickers or not STICKER_HINT_TEXT:
+        return False
+    probability = plugin_config.simple_gpt_sticker_hint_probability
+    if probability <= 0:
+        return False
+    if probability >= 1:
+        return True
+    return random.random() < probability
 
 
 __plugin_meta__ = PluginMetadata(
@@ -449,7 +467,7 @@ def generate_prompt(
     prompt = plugin_config.simple_gpt_prompt_template.format(
         history=history_lines, sender=sender, latest_message=latest_message
     )
-    if STICKER_HINT_TEXT:
+    if _should_provide_sticker_hint():
         prompt = f"{prompt}\n{STICKER_HINT_TEXT}"
     return prompt
 
