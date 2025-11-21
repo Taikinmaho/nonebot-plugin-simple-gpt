@@ -7,6 +7,7 @@
 - 支持为每个群聊维护独立的上下文，但是存在内存里比较蠢，不在群聊之间共享历史消息。
 - 可配置随机回复概率，在未被艾特的情况下也能偶尔插入互动。
 - 所有关键行为（Prompt 模板、模型、温度、超时、兜底回复等）都可以通过 `.env` 配置。
+- 新增 AI 调用频率限制与待回复队列，可避免超限后直接丢消息，并支持自动恢复处理。
 
 ## 📦 安装
 
@@ -32,6 +33,11 @@
 | `SIMPLE_GPT_REPLY_PROBABILITY` | 否 | `0.03` | 随机触发概率，设为 `0` 表示只在艾特时回复 |
 | `SIMPLE_GPT_FAILURE_REPLY` | 否 | `呜呜，暂时无法连接到大模型，请稍后再试呀。` | 调用失败时的兜底文本 |
 | `SIMPLE_GPT_PROACTIVE_GROUP_WHITELIST` | 否 | 空 | 允许主动发言（随机插话）的群聊 ID，使用逗号分隔，例如 `123456,789012` |
+| `SIMPLE_GPT_MAX_AI_CALLS` | 否 | `20` | 单个速率窗口中允许的大模型调用次数，设为 `0` 表示不限频 |
+| `SIMPLE_GPT_AI_RATE_LIMIT_WINDOW_SECONDS` | 否 | `60` | 频率统计窗口，单位秒，与上面组合可配置“每分钟 N 次”这样的限制 |
+| `SIMPLE_GPT_PENDING_QUEUE_LIMIT` | 否 | `10` | 待回复队列最多缓存的消息数，超出后移除最旧的消息 |
+| `SIMPLE_GPT_AUTO_REPLY_COOLDOWN_MINUTES` | 否 | `30` | 触发频率上限后，在多久时间内暂停无 `@` 的随机回复 |
+| `SIMPLE_GPT_ALLOW_PARALLEL_PROCESSING` | 否 | `false` | 是否允许在上一条消息尚未发完时再次调用 AI，默认禁用（直接加入待回复队列） |
 
 默认 Prompt 模板：
 
@@ -46,6 +52,13 @@
 - 在群聊中艾特机器人即可触发智能回复，回复内容会基于最近 30 条群聊消息生成。
 - 当 `SIMPLE_GPT_REPLY_PROBABILITY` 大于 0 时，机器人也可能在未被艾特的状态下随机插话；仅当当前群聊 ID 位于 `SIMPLE_GPT_PROACTIVE_GROUP_WHITELIST` 中时才会开启此行为。
 - 如果未配置 `SIMPLE_GPT_API_KEY`，仅在被艾特时会返回兜底提示；随机回复会自动关闭。
+
+## ⏱️ 调用频率与待回复队列
+
+- 通过 `SIMPLE_GPT_MAX_AI_CALLS` 与 `SIMPLE_GPT_AI_RATE_LIMIT_WINDOW_SECONDS` 可以声明“每 X 秒最多调用 Y 次”规则，例如默认值即为“每 60 秒最多 20 次”。
+- 一旦超过上限，触发回复的消息不会立即丢弃，而是进入待回复队列；队列只保留最近 `SIMPLE_GPT_PENDING_QUEUE_LIMIT` 条数据，并在系统恢复可用时随机抽取 1 条重试。
+- 为了避免刷屏，`SIMPLE_GPT_AUTO_REPLY_COOLDOWN_MINUTES` 会在触顶后暂停新的“随机回复”行为（无 @ 消息），默认 30 分钟，可根据机器人活跃度进行调整。
+- `SIMPLE_GPT_ALLOW_PARALLEL_PROCESSING=false` 时，如果上一条回复仍在“调用 AI + 分段发送”过程中，新消息会自动排队，确保输出顺序一致；如需极致实时性，可显式设置为 `true`。
 
 ## 🛠️ 开发提示
 
